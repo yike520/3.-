@@ -1,0 +1,6 @@
+AltiumDesigner查看原理图软件及视频链接
+百度云网盘链接：
+链接：https://pan.baidu.com/s/1u8L2mRzQ-JkdDrXi7rOTnw 
+提取码：d4de 
+（复制链接到浏览器网址处，打开输入密码即可）
+视频中有详细说明如何查看文件，如何安装开发环境的，如何查看。

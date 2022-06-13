@@ -1,0 +1,168 @@
+C51 COMPILER V9.54   MAIN                                                                  05/10/2020 13:15:09 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN main.OBJ
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND TABS(2)
+
+line level    source
+
+   1          #include <reg52.h> 
+   2          #include <intrins.h>
+   3          #include <stdio.h>
+   4          #include "delay.h"
+   5          //  操作方法
+   6          // 蓝牙发送字符 CX或cX 表示关闭x位灯， x取值1-8  
+   7          // 蓝牙发送字符 OX或oX 表示关闭x位灯， x取值1-8
+   8          
+   9          #define INIT 0xFF    //定义常量
+  10          #define OPEN 0x22
+  11          #define CLOSE 0x33
+  12          
+  13          unsigned long times_5ms=0;     //定时计数
+  14          unsigned char Commd_Flag=INIT;      //初始化命令接收标志
+  15              
+  16          sbit relay1=P1^0;     //初始化relay对应引脚
+  17          sbit relay2=P1^1;
+  18          sbit relay3=P1^2;
+  19          sbit relay4=P1^3;
+  20          sbit relay5=P1^4;
+  21          sbit relay6=P1^5;
+  22          sbit relay7=P1^6;
+  23          sbit relay8=P1^7;
+  24          
+  25          void Init_Timer0(void);//定时器初始化
+  26          
+  27          void UART_Init(void);      //函数声明
+  28          void SendByte(unsigned char dat);
+  29          void SendStr(unsigned char *s,unsigned char length);
+  30          
+  31          void main (void)
+  32          {
+  33   1      
+  34   1        Init_Timer0();        //定时器0初始化
+  35   1        UART_Init();       //蓝牙 串口 波特率9600
+  36   1      
+  37   1        P1=0x00;
+  38   1        DelayMs(200);          //延时有助于稳定  上电检测下硬件
+  39   1        P1=0xff;
+  40   1        
+  41   1        while(1)         //主循环
+  42   1        {
+  43   2            ;//蓝牙的接收处理 均在中断中处理 请查看串口中断
+  44   2        }
+  45   1      }
+  46          
+  47          void Init_Timer0(void)
+  48          {
+  49   1      //**All notes can be deleted and modified**//
+  50   1        TMOD |= 0x10;   //使用模式1，16位定时器，使用"|"符号可以在使用多个定时器时不受影响         
+  51   1        TH0=(65536-10000)/256;      //重新赋值 20ms
+  52   1        TL0=(65536-10000)%256;
+  53   1        EA=1;            //总中断打开
+  54   1        ET0=1;           //定时器中断打开
+  55   1        TR0=1;           //定时器开关打开
+C51 COMPILER V9.54   MAIN                                                                  05/10/2020 13:15:09 PAGE 2   
+
+  56   1      }
+  57          void UART_Init(void)
+  58          {
+  59   1      //**All notes can be deleted and modified**//
+  60   1          SCON  = 0x05;           // SCON: 模式 1, 8-bit UART, 使能接收  
+  61   1          TMOD |= 0x20;               // TMOD: timer 1, mode 2, 8-bit 重装
+  62   1          TH1   = 0xFD;               // TH1:  重装值 9600 波特率 晶振 11.0592MHz
+  63   1        TL1 = TH1;  
+  64   1          TR1   = 1;                  // TR1:  timer 1 打开                         
+  65   1          EA    = 1;                  //打开总中断
+  66   1          ES    = 1;                  //打开串口中断
+  67   1      } 
+  68          
+  69          void Timer0_isr(void) interrupt 1 
+  70          {
+  71   1        TH0=(65536-5000)/256;     //重新赋值 5ms
+  72   1        TL0=(65536-5000)%256;
+  73   1        times_5ms++;          //定时5ms
+  74   1      
+  75   1      }
+  76          
+  77          void UART_SER (void) interrupt 4  //串行中断服务程序
+  78          {
+  79   1        unsigned char R_buf;
+  80   1        if(RI)                        //判断是接收中断产生
+  81   1        {
+  82   2          RI=0;                      //标志位清零
+  83   2          R_buf=SBUF;
+  84   2          if((R_buf=='O')||(R_buf=='o'))
+  85   2          {
+  86   3            Commd_Flag=OPEN;  //接收到打开灯标志
+  87   3          }
+  88   2          else if((R_buf=='C')&&(R_buf=='c'))
+  89   2          {
+  90   3            Commd_Flag=CLOSE; //接收到 关闭灯标志
+  91   3          }
+  92   2          else if((R_buf!='1')&&(R_buf!='2')&&(R_buf!='3')&&(R_buf!='4')&&(R_buf!='5')&&(R_buf!='6')&&(R_buf!='7')
+             -&&(R_buf!='8')&&(R_buf!='a')&&(R_buf!='A'))
+  93   2          {
+  94   3            Commd_Flag=INIT;   //否则 初始化接受标志
+  95   3          }
+  96   2      
+  97   2          if(Commd_Flag==OPEN)      //根据命令值进行打开相应的灯
+  98   2          {
+  99   3            switch(R_buf)
+ 100   3            {
+ 101   4              case '1':relay1=0;Commd_Flag=INIT;break;  //打开相应的灯 并恢复命令标志
+ 102   4              case '2':relay2=0;Commd_Flag=INIT;break;      
+ 103   4              case '3':relay3=0;Commd_Flag=INIT;break;      
+ 104   4              case '4':relay4=0;Commd_Flag=INIT;break;      
+ 105   4              case '5':relay5=0;Commd_Flag=INIT;break;  
+ 106   4              case '6':relay6=0;Commd_Flag=INIT;break;      
+ 107   4              case '7':relay7=0;Commd_Flag=INIT;break;      
+ 108   4              case '8':relay8=0;Commd_Flag=INIT;break;
+ 109   4              case 'A':relay1=0;relay2=0;relay3=0;relay4=0;relay5=0;relay6=0;relay7=0;relay8=0;Commd_Flag=INIT;break
+             -;
+ 110   4              case 'a':relay1=0;relay2=0;relay3=0;relay4=0;relay5=0;relay6=0;relay7=0;relay8=0;Commd_Flag=INIT;break
+             -;
+ 111   4              default:break;             //此处错误判断 不可恢复命令标准
+ 112   4            }
+ 113   3          }
+ 114   2          else if(Commd_Flag==CLOSE)//根据命令值进行关闭相应的灯
+C51 COMPILER V9.54   MAIN                                                                  05/10/2020 13:15:09 PAGE 3   
+
+ 115   2          {
+ 116   3            switch(R_buf)
+ 117   3            {
+ 118   4              case '1':relay1=1;Commd_Flag=INIT;break;  //关闭相应的灯 并恢复命令标志
+ 119   4              case '2':relay2=1;Commd_Flag=INIT;break;      
+ 120   4              case '3':relay3=1;Commd_Flag=INIT;break;      
+ 121   4              case '4':relay4=1;Commd_Flag=INIT;break;      
+ 122   4              case '5':relay5=1;Commd_Flag=INIT;break;  
+ 123   4              case '6':relay6=1;Commd_Flag=INIT;break;      
+ 124   4              case '7':relay7=1;Commd_Flag=INIT;break;      
+ 125   4              case '8':relay8=1;Commd_Flag=INIT;break;
+ 126   4              case 'A':relay1=1;relay2=1;relay3=1;relay4=1;relay5=1;relay6=1;relay7=1;relay8=1;Commd_Flag=INIT;break
+             -;
+ 127   4              case 'a':relay1=1;relay2=1;relay3=1;relay4=1;relay5=1;relay6=1;relay7=1;relay8=1;Commd_Flag=INIT;break
+             -;          
+ 128   4              default:break;             //此处错误判断 不可恢复命令标准
+ 129   4            }
+ 130   3          }
+ 131   2          SBUF=R_buf;          //返回接收到的数据
+ 132   2        }
+ 133   1        if(TI)  //如果是发送标志位，清零
+ 134   1        TI=0;
+ 135   1      } 
+ 136          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    461    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      5       1
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
